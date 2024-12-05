@@ -1,0 +1,122 @@
+<template>
+  <div class="line-display">
+    <div class="line-name">{{ lineName }}</div>
+    <div class="date-time">{{ formattedDateTime }}</div>
+  </div>
+</template>
+
+<script>
+export default {
+  props: {
+    lineName: {
+      type: String,
+      required: true,
+    },
+  },
+  data() {
+    return {
+      currentDateTime: new Date(),
+    };
+  },
+  computed: {
+    formattedDateTime() {
+      const date = this.currentDateTime.toLocaleDateString('en-CA'); // YYYY-MM-DD (ISO-like)
+      const time = this.currentDateTime.toLocaleTimeString('en-GB', { hour12: false }); // HH:MM:SS
+      return `${date} ${time}`.replace(/-/g, '/'); // Convert to YYYY/MM/DD HH:MM:SS
+    },
+  },
+  mounted() {
+    this.timer = setInterval(() => {
+      this.currentDateTime = new Date();
+    }, 1000);
+  },
+  beforeDestroy() {
+    clearInterval(this.timer);
+  },
+};
+</script>
+
+<style scoped>
+.line-display {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  font-size: 1.2rem;
+}
+
+.line-name {
+  text-align: left;
+}
+
+.date-time {
+  text-align: right;
+}
+</style>
+---------------------
+// LineDisplay.spec.js
+import { mount } from '@vue/test-utils';
+import LineDisplay from '@/components/LineDisplay.vue';
+
+describe('LineDisplay Component', () => {
+  it('renders the line name at the top left', () => {
+    const wrapper = mount(LineDisplay, {
+      props: { lineName: 'GPS ミリ波 1 号ライン' },
+    });
+    const lineName = wrapper.find('.line-name');
+    expect(lineName.text()).toBe('GPS ミリ波 1 号ライン');
+  });
+
+  it('renders the date and time in local PC format (YYYY/MM/DD HH:MM:SS)', async () => {
+    const wrapper = mount(LineDisplay);
+    const dateTime = wrapper.find('.date-time');
+    
+    // Get local PC time in the desired format
+    const now = new Date();
+    const expected = now.toLocaleDateString('en-CA') + ' ' + now.toLocaleTimeString('en-GB', { hour12: false });
+    
+    expect(dateTime.text()).toBe(expected); // Check initial rendering
+  });
+
+  it('updates the date and time every second', async () => {
+    jest.useFakeTimers(); // Mock timers
+    const wrapper = mount(LineDisplay);
+    const initialTime = wrapper.find('.date-time').text();
+
+    jest.advanceTimersByTime(1000); // Advance by 1 second
+    await wrapper.vm.$nextTick(); // Wait for the DOM update
+
+    const updatedTime = wrapper.find('.date-time').text();
+    expect(initialTime).not.toBe(updatedTime); // Ensure it updated
+
+    jest.useRealTimers(); // Restore real timers
+  });
+});
+-------------------------------
+import { DateTime } from 'luxon';
+
+export default {
+  props: {
+    lineName: {
+      type: String,
+      required: true,
+    },
+  },
+  data() {
+    return {
+      currentDateTime: DateTime.local(),
+    };
+  },
+  computed: {
+    formattedDateTime() {
+      return this.currentDateTime.toFormat('yyyy/MM/dd HH:mm:ss');
+    },
+  },
+  mounted() {
+    this.timer = setInterval(() => {
+      this.currentDateTime = DateTime.local();
+    }, 1000);
+  },
+  beforeDestroy() {
+    clearInterval(this.timer);
+  },
+};
