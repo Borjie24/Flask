@@ -1,0 +1,99 @@
+import pytest
+from app import app
+
+@pytest.fixture
+def client():
+    with app.test_client() as client:
+        yield client
+
+def test_image_url_endpoint(client):
+    response = client.get('/image-url')
+    assert response.status_code == 200  # Ensure endpoint is reachable
+    data = response.get_json()
+    assert "image_url" in data  # Ensure the key exists
+    assert data["image_url"].startswith("http")  # Ensure the URL format is correct
+---------------------------------------------
+@app.route('/image-url', methods=['GET'])
+def get_image_url():
+    image_url = url_for('static', filename='images/uploaded_image.png', _external=True)
+    return jsonify({"image_url": image_url})
+-------------------------------
+
+import { shallowMount } from "@vue/test-utils";
+import App from "@/App.vue";
+import axios from "axios";
+import MockAdapter from "axios-mock-adapter";
+
+describe("App.vue", () => {
+  let mock;
+
+  beforeEach(() => {
+    mock = new MockAdapter(axios);
+  });
+
+  afterEach(() => {
+    mock.restore();
+  });
+
+  it("renders the image after fetching the URL", async () => {
+        const mockImageUrl = "http://127.0.0.1:5000/static/images/uploaded_image.png";
+
+    // Mock the API response
+    mock.onGet("/image-url").reply(200, { image_url: mockImageUrl });
+
+    // Mount the component
+    const wrapper = shallowMount(App);
+
+    // Wait for the API call and Vue reactivity to update
+    await wrapper.vm.$nextTick();
+
+    // Check if the image URL is set correctly
+    expect(wrapper.vm.imageUrl).toBe(mockImageUrl);
+
+    // Check if the image is rendered
+    const img = wrapper.find("img");
+    expect(img.exists()).toBe(true);
+    expect(img.attributes("src")).toBe(mockImageUrl);
+  });
+});
+-------------------------------
+
+<template>
+  <div id="app">
+    <h1>Uploaded Image</h1>
+    <div v-if="imageUrl">
+      <img :src="imageUrl" alt="Uploaded Image" style="max-width: 100%; height: auto;" />
+    </div>
+    <div v-else>
+      <p>Loading image...</p>
+    </div>
+  </div>
+</template>
+
+<script>
+import axios from "axios";
+
+export default {
+  data() {
+    return {
+      imageUrl: "",
+    };
+  },
+  async mounted() {
+    try {
+      const response = await axios.get("/image-url");
+      this.imageUrl = response.data.image_url;
+    } catch (error) {
+      console.error("Failed to fetch image URL:", error);
+    }
+  },
+};
+</script>
+
+<style>
+#app {
+  text-align: center;
+  margin-top: 50px;
+}
+</style>
+--------------------------------------
