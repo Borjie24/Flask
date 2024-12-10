@@ -71,3 +71,68 @@ describe('Testing RealTimeAndon.vue', () => {
     mockCreateObjectURL.mockRestore()
   })
 })
+
+------
+import { shallowMount } from '@vue/test-utils'
+import RealTimeAndon from '@/components/RealTimeAndon.vue'
+import FetchAPI from '@/utility/apiRequest' // Mock FetchAPI
+
+jest.mock('@/utility/apiRequest', () => {
+  return jest.fn().mockImplementation(() => ({
+    post: jest.fn(() => Promise.resolve({ success: true })),
+    get: jest.fn(() => Promise.resolve({ success: true, data: [] })),
+    delete: jest.fn(() => Promise.resolve({ success: true })),
+    put: jest.fn(() => Promise.resolve({ success: true, message_content: 'Updated successfully' })),
+  }))
+})
+
+describe('Testing RealTimeAndon.vue', () => {
+  let wrapper
+
+  beforeAll(() => {
+    // Mock URL.createObjectURL globally
+    global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost/image-url')
+  })
+
+  afterAll(() => {
+    // Restore original implementation
+    delete global.URL.createObjectURL
+  })
+
+  beforeEach(() => {
+    wrapper = shallowMount(RealTimeAndon, {
+      global: {
+        components: {
+          VAppBar: 'v-app-bar',
+          VSheet: 'v-sheet',
+          VCol: 'v-col',
+          VRow: 'v-row',
+          VMain: 'v-main',
+          VLayout: 'v-layout',
+          NavBarComponent: 'NavBarComponent',
+          LineChartAndIndicator: 'line-chart-and-indicator',
+        },
+      },
+    })
+  })
+
+  test('Test if wrapper exists', () => {
+    expect(wrapper.exists()).toBeTruthy()
+  })
+
+  test('should fetch an image and set imageUrl', async () => {
+    const mockBlob = new Blob(['image content'], { type: 'image/png' })
+    const mockApi = new FetchAPI()
+    mockApi.get.mockResolvedValue(mockBlob)
+
+    // Call the fetchImage method
+    await wrapper.vm.fetchImage()
+
+    // Assertions
+    expect(mockApi.get).toHaveBeenCalledWith('/assets/images/line_chart.png', {
+      responseType: 'blob',
+    })
+    expect(global.URL.createObjectURL).toHaveBeenCalledWith(mockBlob)
+    expect(wrapper.vm.imageUrl).toBe('blob:http://localhost/image-url')
+  })
+})
