@@ -1,0 +1,60 @@
+try:
+    query = OperationInformationDb.query.all()
+
+    operation_data = [
+        {
+            "process_id": item.process_id,
+            "operation_status": item.operation_status,
+            "x": item.coordinates_id.x_position,
+            "y": item.coordinates_id.y_position,
+            "width": item.coordinates_id.width,
+            "height": item.coordinates_id.height,
+        }
+        for item in query
+    ]
+
+    return {
+        "success": True,
+        "message_response": "COORDINATES FETCHED SUCCESSFULLY",
+        "message_content": "Coordinates fetched successfully",
+        "data": operation_data,
+    }, 200
+except Exception as e:
+    traceback.print_exc()
+    return {
+        "success": False,
+        "message_response": "ERROR FETCHING COORDINATES",
+        "message_content": str(e),
+    }, 500
+----------------------------
+
+try:
+    # Use eager loading to ensure `coordinates_id` is fetched
+    query = OperationInformationDb.query.options(db.joinedload("coordinates_id")).all()
+    schema = OperationInformationSchema(many=True).dump(query)
+
+    operation_data = [
+        {
+            "process_id": data["process_id"],
+            "operation_status": data["operation_status"],
+            "x": data["coordinates_id"]["x_position"],
+            "y": data["coordinates_id"]["y_position"],
+            "width": data["coordinates_id"]["width"],
+            "height": data["coordinates_id"]["height"],
+        }
+        for data in schema
+    ]
+
+    return {
+        "success": True,
+        "message_response": "COORDINATES FETCHED SUCCESSFULLY",
+        "message_content": "Coordinates fetched successfully",
+        "data": operation_data,
+    }, 200
+except Exception as e:
+    traceback.print_exc()
+    return {
+        "success": False,
+        "message_response": "ERROR FETCHING COORDINATES",
+        "message_content": str(e),
+    }, 500
