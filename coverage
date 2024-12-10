@@ -1,0 +1,11 @@
+module.exports = {
+  // Other Jest configurations
+  moduleNameMapper: {
+    axios: 'axios/dist/node/axios.cjs',
+  },
+  coveragePathIgnorePatterns: [
+    '/node_modules/',         // Always exclude node_modules
+    '/src/utility/apiRequest', // Exclude FetchAPI file
+    '/src/environment',       // Exclude environment file
+  ],
+};
