@@ -1,0 +1,40 @@
+@operation_information_router.route("/api/get-coordinates", methods=["GET"])
+def get_coordinates():
+    """Fetch all the coordinates
+
+    Returns:
+        dict: return the api response
+    """
+
+    try:
+        query = OperationInformationDb.query.all()
+        schema = OperationInformationSchema(many=True).dump(query)
+
+        operation_data = []
+
+        for data in schema:
+            # Extracting fields from the dictionary
+            operation_data_dict = {
+                "process_id": data.get("process_id"),
+                "operation_status": data.get("operation_status"),
+                "x": data.get("coordinates_id", {}).get("x_position"),
+                "y": data.get("coordinates_id", {}).get("y_position"),
+                "width": data.get("coordinates_id", {}).get("width"),
+                "height": data.get("coordinates_id", {}).get("height"),
+            }
+            operation_data.append(operation_data_dict)
+
+        return {
+            "success": True,
+            "message_response": "COORDINATES FETCHED SUCCESSFULLY",
+            "message_content": "Coordinates fetched successfully",
+            "data": operation_data,
+        }, 200
+
+    except Exception as e:
+        traceback.print_exc()
+        return {
+            "success": False,
+            "message_response": "ERROR FETCHING COORDINATES",
+            "message_content": str(e),
+        }, 500
