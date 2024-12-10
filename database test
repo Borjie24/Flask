@@ -1,0 +1,66 @@
+import pytest
+from unittest.mock import patch, MagicMock
+from flask import Flask
+from src.setup_db_example.database import initialize_database, db, migrate
+
+@pytest.fixture
+def app():
+    """Create a Flask app instance for testing."""
+    app = Flask(__name__)
+    yield app
+
+
+@patch("src.setup_db_example.database.os.path.isdir")
+@patch("src.setup_db_example.database.init")
+@patch("src.setup_db_example.database.upgrade")
+@patch("src.setup_db_example.database.sleep")
+def test_initialize_database(mock_sleep, mock_upgrade, mock_init, mock_isdir, app):
+    """
+    Test the initialize_database function.
+    """
+    # Mock return values for external dependencies
+    mock_isdir.return_value = False  # Simulate migrations directory not existing
+
+    # Call the function under test
+    with patch.object(db, "init_app") as mock_db_init, patch.object(migrate, "init_app") as mock_migrate_init:
+        initialize_database(app)
+
+        # Assertions for database initialization
+        mock_db_init.assert_called_once_with(app)
+        mock_migrate_init.assert_called_once_with(app, db)
+
+        # Assertions for Alembic initialization
+        mock_isdir.assert_called_once_with("/usr/opt/nexus-app/backend/migrations")
+        mock_init.assert_called_once()
+        mock_upgrade.assert_called_once()
+
+        # Assertions for sleep
+        mock_sleep.assert_called_once_with(2)
+
+
+@patch("src.setup_db_example.database.os.path.isdir")
+@patch("src.setup_db_example.database.init")
+@patch("src.setup_db_example.database.upgrade")
+@patch("src.setup_db_example.database.sleep")
+def test_initialize_database_existing_migrations(mock_sleep, mock_upgrade, mock_init, mock_isdir, app):
+    """
+    Test initialize_database when the migrations directory already exists.
+    """
+    # Mock return values for external dependencies
+    mock_isdir.return_value = True  # Simulate migrations directory already exists
+
+    # Call the function under test
+    with patch.object(db, "init_app") as mock_db_init, patch.object(migrate, "init_app") as mock_migrate_init:
+        initialize_database(app)
+
+        # Assertions for database initialization
+        mock_db_init.assert_called_once_with(app)
+        mock_migrate_init.assert_called_once_with(app, db)
+
+        # Alembic initialization should not be called
+        mock_isdir.assert_called_once_with("/usr/opt/nexus-app/backend/migrations")
+        mock_init.assert_not_called()
+        mock_upgrade.assert_called_once()
+
+        # Assertions for sleep
+        mock_sleep.assert_called_once_with(2)
