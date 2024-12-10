@@ -1,0 +1,82 @@
+import pytest
+from unittest.mock import patch
+
+# Mock data for the database query
+MOCK_QUERY_RESULT = [
+    {
+        "process_id": 1,
+        "operation_status": "active",
+        "coordinates_id": {
+            "x_position": 10,
+            "y_position": 20,
+            "width": 30,
+            "height": 40,
+        },
+    },
+    {
+        "process_id": 2,
+        "operation_status": "inactive",
+        "coordinates_id": {
+            "x_position": 50,
+            "y_position": 60,
+            "width": 70,
+            "height": 80,
+        },
+    },
+]
+
+# Mock serialized data from OperationInformationSchema
+MOCK_SCHEMA_RESULT = MOCK_QUERY_RESULT
+
+
+@patch("src.setup_db_example.models.m_operation_information.OperationInformationDb.query")
+@patch("src.setup_db_example.schemas.s_operation_information.OperationInformationSchema.dump")
+def test_get_coordinates(mock_schema_dump, mock_query, client):
+    """
+    Test the get_coordinates route to ensure it returns the correct response (200).
+    """
+    # Configure the mock objects
+    mock_query.all.return_value = MOCK_QUERY_RESULT
+    mock_schema_dump.return_value = MOCK_SCHEMA_RESULT
+
+    # Make the GET request
+    response = client.get("/api/get-coordinates")
+
+    # Parse the JSON response
+    data = response.get_json()
+
+    # Assertions for success response
+    assert response.status_code == 200
+    assert data["success"] is True
+    assert data["message_response"] == "COORDINATES FETCHED SUCCESSFULLY"
+    assert len(data["data"]) == len(MOCK_QUERY_RESULT)
+
+    for idx, item in enumerate(data["data"]):
+        assert item["process_id"] == MOCK_QUERY_RESULT[idx]["process_id"]
+        assert item["operation_status"] == MOCK_QUERY_RESULT[idx]["operation_status"]
+        assert item["x"] == MOCK_QUERY_RESULT[idx]["coordinates_id"]["x_position"]
+        assert item["y"] == MOCK_QUERY_RESULT[idx]["coordinates_id"]["y_position"]
+        assert item["width"] == MOCK_QUERY_RESULT[idx]["coordinates_id"]["width"]
+        assert item["height"] == MOCK_QUERY_RESULT[idx]["coordinates_id"]["height"]
+
+
+@patch("src.setup_db_example.models.m_operation_information.OperationInformationDb.query")
+@patch("src.setup_db_example.schemas.s_operation_information.OperationInformationSchema.dump")
+def test_get_coordinates_error(mock_schema_dump, mock_query, client):
+    """
+    Test the get_coordinates route for 500 Internal Server Error.
+    """
+    # Configure the mock objects to raise an exception
+    mock_query.all.side_effect = Exception("Database connection failed")
+
+    # Make the GET request
+    response = client.get("/api/get-coordinates")
+
+    # Parse the JSON response
+    data = response.get_json()
+
+    # Assertions for error response
+    assert response.status_code == 500
+    assert data["success"] is False
+    assert data["message_response"] == "ERROR FETCHING COORDINATES"
+    assert "Database connection failed" in data["message_content"]
