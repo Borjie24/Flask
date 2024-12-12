@@ -1,0 +1,83 @@
+import { shallowMount } from '@vue/test-utils';
+import MyComponent from '@/components/MyComponent.vue'; // Update with the actual component path
+import FetchAPI from '@/utils/FetchAPI'; // Update with the actual FetchAPI path
+
+jest.mock('@/utils/FetchAPI'); // Mock the FetchAPI class
+
+describe('Methods: createCanvas', () => {
+  let wrapper;
+  let mockContext;
+
+  beforeEach(() => {
+    // Mock the canvas 2D context
+    mockContext = {
+      drawImage: jest.fn(),
+      fillRect: jest.fn(),
+      strokeRect: jest.fn(),
+      beginPath: jest.fn(),
+      arc: jest.fn(),
+      closePath: jest.fn(),
+      fill: jest.fn(),
+      stroke: jest.fn(),
+      fillText: jest.fn(),
+    };
+
+    // Mock canvas ref
+    wrapper = shallowMount(MyComponent, {
+      mocks: {
+        $refs: {
+          myCanvas: {
+            getContext: jest.fn(() => mockContext),
+          },
+        },
+      },
+    });
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('createCanvas fetches coordinates and draws on canvas', async () => {
+    const mockImageURL = 'mockImageURL';
+    const mockRectangles = [
+      { x: 10, y: 20, width: 50, height: 30, process_id: 1, operation_status: 1 },
+      { x: 60, y: 90, width: 70, height: 40, process_id: 2, operation_status: 2 },
+    ];
+
+    // Mock fetchProcessCoordinates response
+    wrapper.vm.fetchProcessCoordinates = jest.fn().mockResolvedValue();
+    wrapper.vm.rectangles = mockRectangles;
+
+    // Mock the image loading
+    const mockImage = {
+      onload: null,
+      src: '',
+    };
+    jest.spyOn(window, 'Image').mockImplementation(() => mockImage);
+
+    // Call createCanvas
+    await wrapper.vm.createCanvas(mockImageURL);
+
+    // Trigger the image onload event
+    mockImage.onload();
+
+    // Assertions
+    expect(wrapper.vm.fetchProcessCoordinates).toHaveBeenCalled();
+    expect(mockImage.src).toBe(mockImageURL);
+    expect(mockContext.drawImage).toHaveBeenCalledWith(mockImage, 0, 0, wrapper.vm.$refs.myCanvas.width, wrapper.vm.$refs.myCanvas.height);
+
+    mockRectangles.forEach((rect) => {
+      // Assert rectangles are drawn
+      expect(mockContext.fillStyle).toBe(wrapper.vm.determineColor(rect.operation_status));
+      expect(mockContext.fillRect).toHaveBeenCalledWith(rect.x, rect.y, rect.width, rect.height);
+      expect(mockContext.strokeRect).toHaveBeenCalledWith(rect.x, rect.y, rect.width, rect.height);
+
+      // Assert circle labels are drawn
+      const circleX = rect.x + rect.width / 2;
+      const circleY = rect.y + rect.height / 2;
+      expect(mockContext.arc).toHaveBeenCalledWith(circleX, circleY, 15, 0, Math.PI * 2);
+      expect(mockContext.fillText).toHaveBeenCalledWith(rect.process_id, circleX, circleY);
+    });
+  });
+});
