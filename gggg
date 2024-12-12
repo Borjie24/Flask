@@ -1,0 +1,109 @@
+import { shallowMount } from '@vue/test-utils'
+import MyComponent from '@/components/MyComponent.vue'
+import { FetchAPI } from '@/services/FetchAPI'
+
+jest.mock('@/services/FetchAPI', () => {
+  return {
+    FetchAPI: jest.fn().mockImplementation(() => {
+      return {
+        get: jest.fn(),
+      }
+    }),
+  }
+})
+
+describe('MyComponent', () => {
+  let wrapper
+
+  beforeEach(() => {
+    wrapper = shallowMount(MyComponent, {
+      data() {
+        return {
+          imageUrl: '',
+          rectangles: [],
+        }
+      },
+    })
+  })
+
+  afterEach(() => {
+    jest.clearAllMocks()
+  })
+
+  test('fetchImage should fetch image and call createCanvas', async () => {
+    const mockBlob = new Blob(['test'])
+    const mockURL = 'mockObjectURL'
+    global.URL.createObjectURL = jest.fn().mockReturnValue(mockURL)
+    FetchAPI.prototype.get.mockResolvedValueOnce(mockBlob)
+
+    const createCanvasSpy = jest.spyOn(wrapper.vm, 'createCanvas')
+    await wrapper.vm.fetchImage()
+
+    expect(FetchAPI.prototype.get).toHaveBeenCalledWith('/assets/images/line_chart.png', {
+      responseType: 'blob',
+    })
+    expect(global.URL.createObjectURL).toHaveBeenCalledWith(mockBlob)
+    expect(wrapper.vm.imageUrl).toBe(mockURL)
+    expect(createCanvasSpy).toHaveBeenCalledWith(mockURL)
+  })
+
+  test('fetchProcessCoordinates should fetch coordinates and set rectangles', async () => {
+    const mockData = { data: [{ x: 10, y: 20, width: 50, height: 50, operation_status: 1 }] }
+    FetchAPI.prototype.get.mockResolvedValueOnce(mockData)
+
+    await wrapper.vm.fetchProcessCoordinates()
+
+    expect(FetchAPI.prototype.get).toHaveBeenCalledWith('/api/get-coordinates')
+    expect(wrapper.vm.rectangles).toEqual(mockData.data)
+  })
+
+  test('determineColor should return correct colors based on status', () => {
+    expect(wrapper.vm.determineColor(1)).toBe('green')
+    expect(wrapper.vm.determineColor(2)).toBe('#FFCA37')
+    expect(wrapper.vm.determineColor(3)).toBe('red')
+    expect(wrapper.vm.determineColor(999)).toBe('grey')
+  })
+
+  test('createCanvas should draw image and rectangles on the canvas', async () => {
+    const mockCanvas = document.createElement('canvas')
+    mockCanvas.getContext = jest.fn().mockReturnValue({
+      drawImage: jest.fn(),
+      fillStyle: '',
+      fillRect: jest.fn(),
+      strokeStyle: '',
+      lineWidth: 0,
+      strokeRect: jest.fn(),
+      beginPath: jest.fn(),
+      arc: jest.fn(),
+      closePath: jest.fn(),
+      fill: jest.fn(),
+      stroke: jest.fn(),
+      font: '',
+      textAlign: '',
+      textBaseline: '',
+      fillText: jest.fn(),
+    })
+    wrapper.vm.$refs.myCanvas = mockCanvas
+
+    const mockImage = {
+      onload: jest.fn(),
+      src: '',
+    }
+    global.Image = jest.fn(() => mockImage)
+
+    wrapper.vm.rectangles = [
+      { x: 10, y: 20, width: 50, height: 50, operation_status: 1, process_id: 'A1' },
+    ]
+
+    await wrapper.vm.createCanvas('mockURL')
+
+    expect(mockImage.src).toBe('mockURL')
+    mockImage.onload()
+
+    const ctx = mockCanvas.getContext('2d')
+    expect(ctx.drawImage).toHaveBeenCalled()
+    expect(ctx.fillRect).toHaveBeenCalledWith(10, 20, 50, 50)
+    expect(ctx.strokeRect).toHaveBeenCalledWith(10, 20, 50, 50)
+    expect(ctx.fillText).toHaveBeenCalledWith('A1', 35, 45)
+  })
+})
