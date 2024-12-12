@@ -1,0 +1,52 @@
+from src.setup_db_example.models.m_operation_information import OperationInformationDb
+from src.setup_db_example.database import db
+from flask import Blueprint, jsonify
+import traceback
+
+operation_information_router = Blueprint("a_operation_", __name__)
+
+@operation_information_router.route("/api/get-coordinates", methods=["GET"])
+def get_coordinates():
+    """Fetch all the coordinates
+
+    Returns:
+        dict: return the API response
+    """
+    try:
+        process = OperationInformationDb.query.all()
+        operation_data = []
+
+        for data in process:
+            operation_data_dict = {
+                "process_id": data.process_id,
+                "operation_status": data.operation_status,
+                "x": data.coordinates.x_position,
+                "y": data.coordinates.y_position,
+                "width": data.coordinates.width,
+                "height": data.coordinates.height,
+            }
+            operation_data.append(operation_data_dict)
+
+        if not operation_data:
+            return {
+                "success": False,
+                "message_response": "NO COORDINATES FOUND",
+                "message_content": "No data available to fetch",
+                "data": []
+            }, 404
+
+        return {
+            "success": True,
+            "message_response": "COORDINATES FETCHED SUCCESSFULLY",
+            "message_content": "Coordinates fetched successfully",
+            "data": operation_data
+        }, 200
+
+    except Exception as e:
+        traceback.print_exc()  # Log the full error traceback for debugging
+        return {
+            "success": False,
+            "message_response": "ERROR FETCHING COORDINATES",
+            "message_content": str(e),
+            "data": []
+        }, 500
