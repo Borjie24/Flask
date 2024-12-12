@@ -1,0 +1,119 @@
+import { shallowMount } from '@vue/test-utils';
+import OperationStatusScreen from '@/components/pages/OperationStatusScreen.vue';
+
+// Mock the API module globally
+jest.mock('@/utility/apiRequest', () => {
+  return jest.fn().mockImplementation(() => ({
+    get: jest.fn((url) => {
+      if (url === '/assets/images/line_chart.png') {
+        return Promise.resolve(new Blob(['image content'], { type: 'image/png' }));
+      }
+      if (url === '/api/get-coordinates') {
+        return Promise.resolve({
+          data: [
+            { x: 10, y: 20, width: 50, height: 50, operation_status: 1, process_id: 101 },
+            { x: 70, y: 100, width: 60, height: 40, operation_status: 2, process_id: 102 },
+          ],
+        });
+      }
+    }),
+  }));
+});
+
+describe('Testing OperationStatusScreen.vue', () => {
+  test('should fetch an image and set imageUrl', async () => {
+    jest.clearAllMocks();
+
+    const mockCreateObjectURL = jest.spyOn(URL, 'createObjectURL').mockReturnValue('blob:http://localhost/image-url');
+
+    const wrapper = shallowMount(OperationStatusScreen, {
+      global: {
+        components: {
+          VContainer: 'v-container',
+          VCol: 'v-col',
+          VRow: 'v-row',
+        },
+      },
+    });
+
+    await wrapper.vm.fetchImage();
+    expect(wrapper.vm.imageUrl).toBe('blob:http://localhost/image-url');
+    expect(URL.createObjectURL).toHaveBeenCalled();
+
+    mockCreateObjectURL.mockRestore();
+  });
+
+  test('should fetch process coordinates and update rectangles', async () => {
+    jest.clearAllMocks();
+
+    const wrapper = shallowMount(OperationStatusScreen, {
+      global: {
+        components: {
+          VContainer: 'v-container',
+          VCol: 'v-col',
+          VRow: 'v-row',
+        },
+      },
+    });
+
+    await wrapper.vm.fetchProcessCoordinates();
+    expect(wrapper.vm.rectangles).toEqual([
+      { x: 10, y: 20, width: 50, height: 50, operation_status: 1, process_id: 101 },
+      { x: 70, y: 100, width: 60, height: 40, operation_status: 2, process_id: 102 },
+    ]);
+  });
+
+  test('should create canvas and draw rectangles with labels', async () => {
+    jest.clearAllMocks();
+
+    const wrapper = shallowMount(OperationStatusScreen, {
+      global: {
+        components: {
+          VContainer: 'v-container',
+          VCol: 'v-col',
+          VRow: 'v-row',
+        },
+      },
+    });
+
+    const canvasContextMock = {
+      drawImage: jest.fn(),
+      fillRect: jest.fn(),
+      strokeRect: jest.fn(),
+      beginPath: jest.fn(),
+      arc: jest.fn(),
+      closePath: jest.fn(),
+      fill: jest.fn(),
+      stroke: jest.fn(),
+      fillText: jest.fn(),
+    };
+
+    jest.spyOn(wrapper.vm.$refs.myCanvas, 'getContext').mockReturnValue(canvasContextMock);
+
+    await wrapper.vm.createCanvas(wrapper.vm.imageUrl);
+
+    expect(canvasContextMock.drawImage).toHaveBeenCalled();
+    expect(canvasContextMock.fillRect).toHaveBeenCalledTimes(2);
+    expect(canvasContextMock.strokeRect).toHaveBeenCalledTimes(2);
+    expect(canvasContextMock.fillText).toHaveBeenCalledTimes(2);
+  });
+
+  test('should determine correct color based on status', () => {
+    jest.clearAllMocks();
+
+    const wrapper = shallowMount(OperationStatusScreen, {
+      global: {
+        components: {
+          VContainer: 'v-container',
+          VCol: 'v-col',
+          VRow: 'v-row',
+        },
+      },
+    });
+
+    expect(wrapper.vm.determineColor(1)).toBe('green');
+    expect(wrapper.vm.determineColor(2)).toBe('#FFCA37');
+    expect(wrapper.vm.determineColor(3)).toBe('red');
+    expect(wrapper.vm.determineColor(99)).toBe('grey');
+  });
+});
