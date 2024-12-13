@@ -1,0 +1,33 @@
+@operation_information_router.route("/api/get-coordinates", methods=["GET"])
+def get_coordinates():
+    """Fetch all the coordinates
+
+    Returns:
+        dict: return the api response
+    """   
+
+    # Query to fetch data with process_id <= 14
+    process = (
+        OperationInformationDb.query.filter(OperationInformationDb.process_id <= 14)
+        .order_by(OperationInformationDb.process_id)
+        .all()
+    )
+    operation_data = []
+
+    for data in process:
+        operation_data_dict = {
+            "process_id": data.process_id,
+            "operation_status": data.operation_status,
+            "x": data.coordinates.x_position,
+            "y": data.coordinates.y_position,
+            "width": data.coordinates.width,
+            "height": data.coordinates.height,
+        }
+        operation_data.append(operation_data_dict)
+
+    return {
+        "success": True,
+        "message_response": "COORDINATES FETCHED SUCCESSFULLY",
+        "message_content": "COORDINATES fetched successfully",
+        "data": operation_data
+    }, 200
