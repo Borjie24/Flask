@@ -1,0 +1,174 @@
+//Realtime
+
+<template>
+  <v-container fluid>
+    <v-row>
+      <v-col cols="12">
+        <!-- Pass coordinates to the child component -->
+        <operation-status-screen :coordinates="coordinates" />
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script>
+import OperationStatusScreen from '@/components/OperationStatusScreen.vue'
+
+export default {
+  name: 'RealTimeAndon',
+  components: {
+    OperationStatusScreen,
+  },
+  data() {
+    return {
+      coordinates: [], // Holds the coordinates data
+    }
+  },
+  methods: {
+    // This method can be used to update the coordinates
+    async deleteCoordinateFromDatabase(coordinateId) {
+      try {
+        // Make API call to delete the coordinate
+        await this.$axios.delete(`/coordinates/${coordinateId}`)
+
+        // After deletion, update the coordinates array
+        this.coordinates = this.coordinates.filter(coord => coord.id !== coordinateId)
+      } catch (error) {
+        console.error("Error deleting coordinate:", error)
+      }
+    },
+
+    // Fetch the coordinates from the database (if needed)
+    async fetchCoordinates() {
+      try {
+        const response = await this.$axios.get('/coordinates')
+        this.coordinates = response.data
+      } catch (error) {
+        console.error("Error fetching coordinates:", error)
+      }
+    }
+  },
+  mounted() {
+    this.fetchCoordinates() // Fetch coordinates when the component is mounted
+  },
+}
+</script>
+
+<style scoped>
+/* Add styles for the parent component if needed */
+</style>
+
+
+//OperationStat
+<template>
+  <v-container fluid>
+    <v-row>
+      <v-col cols="12">
+        <!-- Canvas to draw the coordinates -->
+        <canvas ref="myCanvas" width="416" height="700" class="canvas"></canvas>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script>
+export default {
+  name: 'OperationStatusScreen',
+  props: {
+    coordinates: Array, // Accept coordinates as a prop
+  },
+  data() {
+    return {
+      imageUrl: null,
+    }
+  },
+  mounted() {
+    this.fetchImage() // Fetch image when the component is mounted
+  },
+  watch: {
+    coordinates: {
+      handler(newCoordinates) {
+        // Redraw the canvas whenever the coordinates prop changes
+        this.createCanvas(this.imageUrl, newCoordinates)
+      },
+      immediate: true, // Call the handler immediately on initial render
+    },
+  },
+  methods: {
+    /**
+     * Function used for getting the image
+     */
+    async fetchImage() {
+      try {
+        const api = new FetchAPI()
+        const response = await api.get('/assets/images/line_chart.png', {
+          responseType: 'blob',
+        })
+        this.imageUrl = URL.createObjectURL(response)
+        this.createCanvas(this.imageUrl, this.coordinates) // Call createCanvas after image is fetched
+      } catch (err) {
+        console.log(err)
+      }
+    },
+
+    /**
+     * Creates boxes with number label
+     * @param {string} imageURL - image URL
+     * @param {Array} coordinates - The coordinates to draw
+     */
+    async createCanvas(imageURL, coordinates) {
+      const canvas = this.$refs.myCanvas
+      const ctx = canvas.getContext('2d')
+      const image = new Image()
+      image.src = imageURL
+
+      image.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height) // Clear previous canvas content
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+        // Use the updated coordinates passed from the parent component
+        coordinates.forEach((rect) => {
+          ctx.fillStyle = this.determineColor(rect.operation_status)
+          ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
+          ctx.strokeStyle = 'white'
+          ctx.lineWidth = 3
+          ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
+        })
+      }
+    },
+
+    /**
+     * Determines the color of the operation based on the status value
+     * @param {int} status - status value of the operation
+     * @returns {string} color based on the status
+     */
+    determineColor(status) {
+      let statusColor = ''
+
+      switch (status) {
+        case 1: // 稼働中 In operation
+          statusColor = 'green'
+          break
+        case 2: // 準備中 preparation
+          statusColor = '#FFCA37'
+          break
+        case 3: // 異常停止 abnormal stop
+          statusColor = 'red'
+          break
+        default:
+          statusColor = 'grey'
+      }
+
+      return statusColor
+    },
+  },
+}
+</script>
+
+<style scoped>
+.canvas {
+  border: 1px solid #ccc;
+}
+</style>
+
+//
