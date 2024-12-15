@@ -1,0 +1,63 @@
+<template>
+  <v-container fluid>
+    <v-row>
+      <v-col cols="12">
+        <!-- Pass table properties to the child component -->
+        <operation-status-screen :table-properties="tableProperties" />
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script>
+import OperationStatusScreen from '@/components/OperationStatusScreen.vue'
+import { DEFAULT_TABLE_PROPERTIES } from '@/common/recipe/tableProperties'
+
+export default {
+  name: 'RealTimeAndon',
+  components: {
+    OperationStatusScreen,
+  },
+  data() {
+    return {
+      tableProperties: JSON.parse(JSON.stringify(DEFAULT_TABLE_PROPERTIES)), // Pass a reactive copy
+    }
+  },
+}
+</script>
+---------------------------------
+<template>
+  <v-container fluid>
+    <v-row>
+      <v-col cols="12">
+        <!-- Render the updated label -->
+        <common-label :item="tableProperties.TABLE_HEADER[1].display" />
+      </v-col>
+
+      <v-col cols="12">
+        <v-btn @click="updateLabel">Change Label</v-btn>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script>
+export default {
+  name: 'OperationStatusScreen',
+  props: {
+    tableProperties: Object, // Receive table properties from the parent
+  },
+  methods: {
+    /**
+     * Updates the label of the second column in TABLE_HEADER
+     */
+    updateLabel() {
+      this.tableProperties.TABLE_HEADER[1].display.label = '新しい稼働中' // Update the label
+    },
+  },
+}
+</script>
+
+<style scoped>
+/* Add styles if needed */
+</style>
