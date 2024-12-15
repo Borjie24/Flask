@@ -172,3 +172,74 @@ export default {
 </style>
 
 //
+
+// Mock component with the getColor method
+const mockComponent = {
+  data() {
+    return {
+      operation: null,
+    };
+  },
+  methods: {
+    getColor() {
+      const colors = {
+        1: 'red',
+        2: 'yellow',
+        3: 'red',
+      };
+
+      return {
+        backgroundColor: colors[this.operation] || 'gray',
+      };
+    },
+  },
+};
+----------------
+getColor() {
+  const colors = {
+    1: 'red',
+    2: 'yellow',
+    3: 'red',
+  };
+
+  return {
+    backgroundColor: colors[this.operation] || 'gray',
+  };
+}
+
+
+
+describe('getColor Method', () => {
+  let component;
+
+  beforeEach(() => {
+    // Create a new instance of the mock component
+    component = { ...mockComponent, ...mockComponent.data() };
+  });
+
+  it('should return red for operation 1', () => {
+    component.operation = 1;
+    expect(component.getColor()).toEqual({ backgroundColor: 'red' });
+  });
+
+  it('should return yellow for operation 2', () => {
+    component.operation = 2;
+    expect(component.getColor()).toEqual({ backgroundColor: 'yellow' });
+  });
+
+  it('should return red for operation 3', () => {
+    component.operation = 3;
+    expect(component.getColor()).toEqual({ backgroundColor: 'red' });
+  });
+
+  it('should return gray for an undefined operation', () => {
+    component.operation = undefined;
+    expect(component.getColor()).toEqual({ backgroundColor: 'gray' });
+  });
+
+  it('should return gray for an operation not in the colors map', () => {
+    component.operation = 99;
+    expect(component.getColor()).toEqual({ backgroundColor: 'gray' });
+  });
+});
+
